@@ -70,8 +70,38 @@ Primary environment variables:
 - Keep migrations additive and explicit.
 - Favor table-driven tests for handler and service behavior.
 
+## Required Skills And Owning Agent
+
+Primary skill:
+
+- `rccc-api-backend`
+
+Supporting skills:
+
+- `rccc-contracts`
+- `rccc-handoffs-json`
+- `rccc-testing`
+- `rccc-git-pr`
+- optional `security-best-practices`
+
+Expected owning agent:
+
+- `backend-agent`
+
+Invoke supporting skills when:
+
+- a shared payload or endpoint contract changes: `rccc-contracts`
+- another agent depends on your output: `rccc-handoffs-json`
+- the task is primarily validation or test expansion: `rccc-testing`
+- the task is complete and needs closeout: `rccc-git-pr`
 ## Coordination Rules
 
 - Before starting work, claim or update the relevant task in the root [tasks.md](../tasks.md).
+- If another agent will need your output, create or update `../handoffs/TASK-###-slug/` and record the task brief, handoff, decisions, and related files as JSON.
+- Use the shared schemas in `../handoffs/schemas/` and keep all handoff `related_files` workspace-relative.
+- When a repository task is complete, finish it with a git commit, push the branch, and open or update a pull request unless the task is explicitly documentation-only workspace coordination outside that repository.
 - If work crosses into ingestion contracts or frontend payloads, update the shared contract task or create a new coordination task first.
 - Do not expand scope into auth, AI features, or deployment architecture unless a task explicitly requires it.
+
+
+
