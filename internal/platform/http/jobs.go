@@ -28,16 +28,18 @@ type listJobsResponse struct {
 }
 
 type jobResponse struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Company     string `json:"company"`
-	Location    string `json:"location"`
-	Remote      bool   `json:"remote"`
-	Description string `json:"description"`
-	Source      string `json:"source"`
-	SourceURL   string `json:"source_url"`
-	PostedAt    string `json:"posted_at"`
-	IngestedAt  string `json:"ingested_at"`
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Company      string   `json:"company"`
+	Location     string   `json:"location"`
+	Remote       bool     `json:"remote"`
+	Description  string   `json:"description"`
+	Source       string   `json:"source"`
+	SourceURL    string   `json:"source_url"`
+	PostedAt     string   `json:"posted_at"`
+	IngestedAt   string   `json:"ingested_at"`
+	Score        int      `json:"score"`
+	ScoreReasons []string `json:"score_reasons"`
 }
 
 func (h *JobsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -147,18 +149,36 @@ func parseListJobsQuery(r *http.Request) (jobs.ListJobsQuery, error) {
 	return query, nil
 }
 
-func mapJobResponse(job jobs.Job) jobResponse {
+func mapJobResponse(job jobs.JobResult) jobResponse {
 	return jobResponse{
-		ID:          job.ID,
-		Title:       job.Title,
-		Company:     job.Company,
-		Location:    job.Location,
-		Remote:      job.Remote,
-		Description: job.Description,
-		Source:      job.Source,
-		SourceURL:   job.SourceURL,
-		PostedAt:    job.PostedAt.UTC().Format(timeRFC3339),
-		IngestedAt:  job.IngestedAt.UTC().Format(timeRFC3339),
+		ID:           job.Job.ID,
+		Title:        job.Job.Title,
+		Company:      job.Job.Company,
+		Location:     job.Job.Location,
+		Remote:       job.Job.Remote,
+		Description:  job.Job.Description,
+		Source:       job.Job.Source,
+		SourceURL:    job.Job.SourceURL,
+		PostedAt:     job.Job.PostedAt.UTC().Format(timeRFC3339),
+		IngestedAt:   job.Job.IngestedAt.UTC().Format(timeRFC3339),
+		Score:        job.Score,
+		ScoreReasons: append([]string{}, job.ScoreReasons...),
+	}
+}
+
+func mapCanonicalJobResponse(job jobs.Job) jobResponse {
+	return jobResponse{
+		ID:           job.ID,
+		Title:        job.Title,
+		Company:      job.Company,
+		Location:     job.Location,
+		Remote:       job.Remote,
+		Description:  job.Description,
+		Source:       job.Source,
+		SourceURL:    job.SourceURL,
+		PostedAt:     job.PostedAt.UTC().Format(timeRFC3339),
+		IngestedAt:   job.IngestedAt.UTC().Format(timeRFC3339),
+		ScoreReasons: []string{},
 	}
 }
 

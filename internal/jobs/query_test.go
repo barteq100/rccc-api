@@ -4,12 +4,21 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/barteq100/rccc-api/internal/profile"
+	"github.com/barteq100/rccc-api/internal/scoring"
 )
 
 func TestBrowseServiceListAppliesFiltersAndPagination(t *testing.T) {
 	repo := NewMemoryRepository()
 	seedJobs(t, repo)
-	service := NewBrowseService(repo)
+	profileService := seedProfileService(t, profile.UpdateInput{
+		PreferredStack:     []string{"Go", "Platform"},
+		RemoteOnly:         true,
+		PreferredLocations: []string{"Europe"},
+		TargetSeniority:    "senior",
+	})
+	service := NewBrowseService(repo, profileService, scoring.NewService())
 	remote := true
 
 	result, err := service.List(context.Background(), ListJobsQuery{
@@ -33,15 +42,26 @@ func TestBrowseServiceListAppliesFiltersAndPagination(t *testing.T) {
 	if len(result.Items) != 1 {
 		t.Fatalf("expected one item on first page, got %d", len(result.Items))
 	}
-	if result.Items[0].ID != "job-003" {
-		t.Fatalf("expected most recent matching job first, got %q", result.Items[0].ID)
+	if result.Items[0].Job.ID != "job-003" {
+		t.Fatalf("expected most recent matching job first, got %q", result.Items[0].Job.ID)
+	}
+	if result.Items[0].Score != 100 {
+		t.Fatalf("expected scored result, got %d", result.Items[0].Score)
+	}
+	if len(result.Items[0].ScoreReasons) == 0 {
+		t.Fatalf("expected score reasons to be populated")
 	}
 }
 
 func TestBrowseServiceGetByIDReturnsJob(t *testing.T) {
 	repo := NewMemoryRepository()
 	seedJobs(t, repo)
-	service := NewBrowseService(repo)
+	profileService := seedProfileService(t, profile.UpdateInput{
+		PreferredStack:     []string{"Platform"},
+		PreferredLocations: []string{"Warsaw"},
+		TargetSeniority:    "staff",
+	})
+	service := NewBrowseService(repo, profileService, scoring.NewService())
 
 	job, found, err := service.GetByID(context.Background(), "job-002")
 	if err != nil {
@@ -50,8 +70,31 @@ func TestBrowseServiceGetByIDReturnsJob(t *testing.T) {
 	if !found {
 		t.Fatalf("expected job to be found")
 	}
-	if job.Title != "Staff Platform Engineer" {
-		t.Fatalf("unexpected job title: %q", job.Title)
+	if job.Job.Title != "Staff Platform Engineer" {
+		t.Fatalf("unexpected job title: %q", job.Job.Title)
+	}
+	if job.Score != 100 {
+		t.Fatalf("expected fully matched score, got %d", job.Score)
+	}
+}
+
+func TestBrowseServiceUsesFallbackScoreWithoutProfilePreferences(t *testing.T) {
+	repo := NewMemoryRepository()
+	seedJobs(t, repo)
+	service := NewBrowseService(repo, profile.NewService(profile.NewMemoryRepository(), nil), scoring.NewService())
+
+	job, found, err := service.GetByID(context.Background(), "job-001")
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if !found {
+		t.Fatalf("expected job to be found")
+	}
+	if job.Score != 0 {
+		t.Fatalf("expected fallback score 0, got %d", job.Score)
+	}
+	if len(job.ScoreReasons) != 1 || job.ScoreReasons[0] != "No profile preferences configured yet." {
+		t.Fatalf("unexpected fallback reasons: %#v", job.ScoreReasons)
 	}
 }
 
@@ -104,4 +147,18 @@ func seedJobs(t *testing.T, repo *MemoryRepository) {
 			t.Fatalf("Upsert returned error: %v", err)
 		}
 	}
+}
+
+func seedProfileService(t *testing.T, input profile.UpdateInput) *profile.Service {
+	t.Helper()
+
+	service := profile.NewService(profile.NewMemoryRepository(), func() time.Time {
+		return time.Date(2026, 4, 24, 12, 0, 0, 0, time.UTC)
+	})
+
+	if _, err := service.Update(context.Background(), input); err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+
+	return service
 }

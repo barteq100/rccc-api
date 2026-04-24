@@ -175,7 +175,7 @@ func (h *ApplicationsHandler) handleItem(w http.ResponseWriter, r *http.Request,
 
 func mapApplicationResponse(item applications.TrackedApplication) applicationResponse {
 	response := applicationResponse{
-		Job:             mapJobResponse(item.Job),
+		Job:             mapCanonicalJobResponse(item.Job),
 		Status:          string(item.Status),
 		SavedAt:         item.SavedAt.UTC().Format(timeRFC3339),
 		StatusChangedAt: item.StatusChangedAt.UTC().Format(timeRFC3339),

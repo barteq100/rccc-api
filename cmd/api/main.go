@@ -9,6 +9,7 @@ import (
 	"github.com/barteq100/rccc-api/internal/jobs"
 	transporthttp "github.com/barteq100/rccc-api/internal/platform/http"
 	"github.com/barteq100/rccc-api/internal/profile"
+	"github.com/barteq100/rccc-api/internal/scoring"
 )
 
 func main() {
@@ -19,9 +20,9 @@ func main() {
 
 	repo := jobs.NewMemoryRepository()
 	upsertService := jobs.NewUpsertService(repo, nil)
-	browseService := jobs.NewBrowseService(repo)
-	applicationsService := applications.NewService(applications.NewMemoryRepository(), repo, nil)
 	profileService := profile.NewService(profile.NewMemoryRepository(), nil)
+	browseService := jobs.NewBrowseService(repo, profileService, scoring.NewService())
+	applicationsService := applications.NewService(applications.NewMemoryRepository(), repo, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle("/internal/ingestion/jobs", transporthttp.NewJobsUpsertHandler(upsertService))

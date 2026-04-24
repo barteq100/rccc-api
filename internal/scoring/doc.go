@@ -1,3 +1,3 @@
 package scoring
 
-// Package scoring will hold deterministic and explainable fit score rules.
+// Package scoring evaluates deterministic and explainable fit scores.
