@@ -99,9 +99,15 @@ Invoke supporting skills when:
 - Before starting work, claim or update the relevant task in the root [tasks.md](../tasks.md).
 - If another agent will need your output, create or update `../handoffs/TASK-###-slug/` and record the task brief, handoff, decisions, and related files as JSON.
 - Use the shared schemas in `../handoffs/schemas/` and keep all handoff `related_files` workspace-relative.
+- For delegated multi-step work, update `tasks.md` and `handoff.json` after context is read, after meaningful edits, after validation, and before exit.`r`n- For live observability, create or update `../handoffs/TASK-###-slug/worker-<agent>.json` with heartbeat, current state, current step, touched files, and validation status.
+- End every delegated run with an explicit `done`, `blocked`, or `partial` outcome in the returned message. If the outcome is `partial`, leave the task `in_progress` with a precise next step. If the outcome is `blocked`, set the task to `blocked` and record the blocker in `handoff.json`.
 - When a repository task is complete, finish it with a git commit, push the branch, and open or update a pull request unless the task is explicitly documentation-only workspace coordination outside that repository.
 - If work crosses into ingestion contracts or frontend payloads, update the shared contract task or create a new coordination task first.
 - Do not expand scope into auth, AI features, or deployment architecture unless a task explicitly requires it.
+
+
+
+
 
 
 
