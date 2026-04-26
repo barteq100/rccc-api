@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/barteq100/rccc-api/internal/applications"
 	"github.com/barteq100/rccc-api/internal/jobs"
@@ -18,11 +22,39 @@ func main() {
 		port = "8080"
 	}
 
-	repo := jobs.NewMemoryRepository()
-	upsertService := jobs.NewUpsertService(repo, nil)
-	profileService := profile.NewService(profile.NewMemoryRepository(), nil)
-	browseService := jobs.NewBrowseService(repo, profileService, scoring.NewService())
-	applicationsService := applications.NewService(applications.NewMemoryRepository(), repo, nil)
+	seedDemoData, err := loadSeedDemoDataFlag()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler, err := newServer(context.Background(), serverOptions{SeedDemoData: seedDemoData})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("rccc-api listening on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, handler))
+}
+
+type serverOptions struct {
+	SeedDemoData bool
+}
+
+func newServer(ctx context.Context, options serverOptions) (http.Handler, error) {
+	jobRepo := jobs.NewMemoryRepository()
+	profileRepo := profile.NewMemoryRepository()
+	applicationsRepo := applications.NewMemoryRepository()
+
+	if options.SeedDemoData {
+		if err := seedDemoRuntime(ctx, jobRepo, profileRepo, applicationsRepo); err != nil {
+			return nil, fmt.Errorf("seed demo runtime: %w", err)
+		}
+	}
+
+	upsertService := jobs.NewUpsertService(jobRepo, nil)
+	profileService := profile.NewService(profileRepo, nil)
+	browseService := jobs.NewBrowseService(jobRepo, profileService, scoring.NewService())
+	applicationsService := applications.NewService(applicationsRepo, jobRepo, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle("/internal/ingestion/jobs", transporthttp.NewJobsUpsertHandler(upsertService))
@@ -37,6 +69,19 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	log.Printf("rccc-api listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	return mux, nil
+}
+
+func loadSeedDemoDataFlag() (bool, error) {
+	raw := strings.TrimSpace(os.Getenv("RCCC_API_SEED_DEMO_DATA"))
+	if raw == "" {
+		return false, nil
+	}
+
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("parse RCCC_API_SEED_DEMO_DATA: %w", err)
+	}
+
+	return value, nil
 }

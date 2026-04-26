@@ -87,6 +87,37 @@ func TestServiceUpdateStatusRejectsInvalidStatus(t *testing.T) {
 	}
 }
 
+func TestServiceUpdateStatusSavedClearsAppliedAt(t *testing.T) {
+	jobRepo := jobs.NewMemoryRepository()
+	seedApplicationTestJob(t, jobRepo, "job-001")
+
+	clock := fixedClock(
+		time.Date(2026, 4, 24, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 4, 24, 12, 5, 0, 0, time.UTC),
+		time.Date(2026, 4, 24, 12, 10, 0, 0, time.UTC),
+	)
+	service := NewService(NewMemoryRepository(), jobRepo, clock)
+
+	if _, err := service.MarkApplied(context.Background(), "job-001"); err != nil {
+		t.Fatalf("MarkApplied returned error: %v", err)
+	}
+
+	got, err := service.UpdateStatus(context.Background(), "job-001", StatusSaved)
+	if err != nil {
+		t.Fatalf("UpdateStatus returned error: %v", err)
+	}
+
+	if got.Status != StatusSaved {
+		t.Fatalf("expected saved status, got %q", got.Status)
+	}
+	if got.AppliedAt != nil {
+		t.Fatalf("expected applied_at to be cleared, got %v", got.AppliedAt)
+	}
+	if got.StatusChangedAt != time.Date(2026, 4, 24, 12, 5, 0, 0, time.UTC) {
+		t.Fatalf("unexpected status_changed_at: %s", got.StatusChangedAt)
+	}
+}
+
 func TestServiceListReturnsTrackedApplicationsSortedByStatusChange(t *testing.T) {
 	jobRepo := jobs.NewMemoryRepository()
 	seedApplicationTestJob(t, jobRepo, "job-001")
